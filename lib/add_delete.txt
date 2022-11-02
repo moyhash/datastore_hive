@@ -1,0 +1,138 @@
+import 'package:flutter/material.dart';
+
+import 'helper.dart';
+
+class HomePage extends StatefulWidget {
+  const HomePage({Key? key}) : super(key: key);
+
+  @override
+  State<HomePage> createState() => _HomePageState();
+}
+
+class _HomePageState extends State<HomePage> {
+  // this to load all grocery items here
+  // and update the screen
+  List<Map<String, dynamic>> _grocecryItem = [];
+  @override
+  // get all grocery item from Hive
+  void initState() {
+    setState(() {
+      _grocecryItem = HiveHelper.getGroceries();
+    });
+    super.initState();
+  }
+
+// for text fielld,
+  final _itemController = TextEditingController();
+  final _quantityController = TextEditingController();
+  final _dateController = TextEditingController();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('Flutter Hive'),
+        centerTitle: true,
+      ),
+      body: _grocecryItem.isEmpty
+          ? const Center(
+              child: Text(
+                'No Grocery Item Added yet',
+              ),
+            )
+          : ListView.builder(
+              itemCount: _grocecryItem.length,
+              itemBuilder: (context, index) {
+                // get current item by index
+                final item = _grocecryItem[index];
+                return Card(
+                  elevation: 5,
+                  child: ListTile(
+                    title: Text(item['item']),
+                    subtitle: Text(item['date']),
+                    leading: Text(item['quantity']),
+                    trailing: IconButton(
+                      icon: const Icon(Icons.delete),
+                      onPressed: () async {
+                        HiveHelper.deleteItem(item['key']);
+
+                        setState(() {
+                          // rrefresh the screen after delete
+                          _grocecryItem = HiveHelper.getGroceries();
+                        });
+                      },
+                    ),
+                  ),
+                );
+              },
+            ),
+      floatingActionButton: FloatingActionButton(
+        child: const Icon(Icons.add),
+        onPressed: () => _groceryModel(context),
+      ),
+    );
+  }
+
+  // this is Function
+  void _groceryModel(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (_) {
+        return AlertDialog(
+          title: const Text('Add Items'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min, // Minimize the boxe size
+            children: <Widget>[
+              // Text Field
+              _buildTextField(_itemController, 'Item'),
+              const SizedBox(
+                height: 10,
+              ),
+              _buildTextField(_quantityController, 'Quantity'),
+              const SizedBox(
+                height: 10,
+              ),
+              _buildTextField(_dateController, 'Date'),
+            ],
+          ),
+          actions: <Widget>[
+            ElevatedButton(
+              // on Presse Add new Item to Hive
+              onPressed: () {
+                HiveHelper.addItem({
+                  'item': _itemController.text,
+                  'quantity': _quantityController.text,
+                  'date': _dateController.text,
+                });
+
+                // Clear all Text Field
+                _itemController.clear();
+                _quantityController.clear();
+                _dateController.clear();
+
+                // refresh and get latest List
+                setState(() {
+                  _grocecryItem = HiveHelper.getGroceries();
+                  Navigator.of(context).pop();
+                });
+              },
+              child: const Text('Add New'),
+            )
+          ],
+        );
+      },
+    );
+  }
+
+  // Function for Text Field cintroller
+  TextField _buildTextField(TextEditingController controller, String hint) {
+    return TextField(
+      controller: controller,
+      decoration: InputDecoration(
+        labelText: hint,
+        hintText: hint,
+        //border: const OutlineInputBorder(),
+      ),
+    );
+  }
+}
